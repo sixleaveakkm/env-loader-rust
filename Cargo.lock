@@ -158,7 +158,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "env-loader-rust"
+name = "env-loader"
 version = "0.1.0"
 dependencies = [
  "config",
