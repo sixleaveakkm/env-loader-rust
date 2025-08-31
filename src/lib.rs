@@ -6,6 +6,8 @@ pub fn parse<T>(name: Option<&str>) -> T
 where T: for<'de> Deserialize<'de>
 + Clone + Debug {
     let mut builder = Config::builder();
+    builder = builder.add_source(config::Environment::default());
+
     if let Some(name) = name {
         let path = std::env::var(name).ok()
             .expect("specified env var not found");
@@ -16,7 +18,6 @@ where T: for<'de> Deserialize<'de>
             builder = builder.add_source(config::File::with_name(path.as_str()));
         }
     }
-    builder = builder.add_source(config::Environment::default());
 
     let config = builder.build().expect("failed to parse config");
     let parsed: T = config.try_deserialize().unwrap();
@@ -26,7 +27,6 @@ where T: for<'de> Deserialize<'de>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::*;
 
     #[derive(Deserialize, Debug, Clone)]
     pub struct Conf {
@@ -35,7 +35,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn work_from_env() {
         unsafe {
             std::env::set_var("port", "8080");
@@ -52,14 +51,12 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[should_panic]
     fn panic_no_env() {
-        let p = parse::<Conf>(None);
+        let _p = parse::<Conf>(None);
     }
 
     #[test]
-    #[serial]
     fn work_from_default_file() {
         unsafe {
             std::env::set_var("CONFIG", "env.sample.toml");
@@ -74,14 +71,32 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[should_panic]
     fn panic_with_non_exist_file() {
         unsafe {
             std::env::set_var("CONFIG", "bar.toml");
         }
-        let p = parse::<Conf>(None);
+        let _p = parse::<Conf>(None);
         unsafe {
+            std::env::remove_var("CONFIG");
+        }
+    }
+
+
+    #[test]
+    fn duplicate_var_in_env_and_file() {
+        unsafe {
+            std::env::set_var("port", "8099");
+            std::env::set_var("host", "foo.bar");
+            std::env::set_var("CONFIG", "env.sample.toml");
+        }
+        let p = parse::<Conf>(None);
+        println!("{:?}", p);
+        assert_eq!(p.port, 8080);
+        assert_eq!(p.host, "foo.bar".to_string());
+        unsafe {
+            std::env::remove_var("port");
+            std::env::remove_var("host");
             std::env::remove_var("CONFIG");
         }
     }
