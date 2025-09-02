@@ -1,0 +1,7 @@
+version: "3"
+services:
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+      - "4501-4559:4501-4559"
