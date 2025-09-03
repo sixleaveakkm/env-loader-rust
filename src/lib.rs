@@ -1,10 +1,10 @@
 #[cfg(feature = "aws")]
 mod aws_loader;
 
-use config::{Config, ConfigBuilder};
-use std::fmt::Debug;
-use config::builder::{AsyncState,  DefaultState};
+use config::builder::{AsyncState, DefaultState};
+use config::ConfigBuilder;
 use serde::Deserialize;
+use std::fmt::Debug;
 
 
 pub fn parse<T>(name: Option<&str>) -> T
