@@ -47,7 +47,7 @@ pub async fn aws_loader() -> Result<Map<String, Value>, String> {
     let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
     {
         let keys = ssm.iter().map(|(k, _)| k.clone()).collect::<Vec<String>>();
-        let resp = ssm_client.get_parameters().set_names(Some(keys)).send().await
+        let resp = ssm_client.get_parameters().set_names(Some(keys)).with_decryption(true).send().await
             .map_err(|e| {
                 format!("{:?}", e)
             })?;
