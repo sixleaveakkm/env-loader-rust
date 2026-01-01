@@ -10,7 +10,7 @@ use std::fmt::Debug;
 pub fn parse<T>(name: Option<&str>) -> T
 where T: for<'de> Deserialize<'de> + Clone + Debug {
     let mut builder = ConfigBuilder::<DefaultState>::default();
-    builder = builder.add_source(config::Environment::default());
+    builder = builder.add_source(config::Environment::default().separator("_"));
 
     if let Some(name) = name {
         let path = std::env::var(name).ok()
@@ -31,7 +31,7 @@ where T: for<'de> Deserialize<'de> + Clone + Debug {
 pub async fn parse_async<T>(name: Option<&str>) -> T
 where T: for<'de> Deserialize<'de> + Clone + Debug {
     let mut builder = ConfigBuilder::<AsyncState>::default();
-    builder = builder.add_source(config::Environment::default());
+    builder = builder.add_source(config::Environment::default().separator("_"));
 
     if let Some(name) = name {
         let path = std::env::var(name).ok()
