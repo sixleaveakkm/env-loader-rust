@@ -5,22 +5,37 @@ use config::builder::{AsyncState, DefaultState};
 use config::ConfigBuilder;
 use serde::Deserialize;
 use std::fmt::Debug;
+use std::path::PathBuf;
 
+fn file_path_from_env(name: Option<&str>) -> Option<String> {
+    if let Some(name) = name {
+        Some(std::env::var(name).expect("specified env var not found"))
+    } else {
+        std::env::var("CONFIG").ok()
+    }
+}
 
-pub fn parse<T>(name: Option<&str>) -> T
-where T: for<'de> Deserialize<'de> + Clone + Debug {
+fn base_sync_builder() -> ConfigBuilder<DefaultState> {
     let mut builder = ConfigBuilder::<DefaultState>::default();
     builder = builder.add_source(config::Environment::default());
+    builder
+}
 
-    if let Some(name) = name {
-        let path = std::env::var(name).ok()
-            .expect("specified env var not found");
-        builder = builder.add_source(config::File::with_name(path.as_str()));
-    } else {
-        let path = std::env::var("CONFIG").ok();
-        if let Some(path) = path {
-            builder = builder.add_source(config::File::with_name(path.as_str()));
-        }
+fn base_async_builder() -> ConfigBuilder<AsyncState> {
+    let mut builder = ConfigBuilder::<AsyncState>::default();
+    builder = builder.add_source(config::Environment::default());
+    builder
+}
+
+/// Parse configuration from environment variables and an optional file path.
+///
+/// If `name` is `Some`, uses that env var for the config file path.
+/// If `None`, falls back to `CONFIG` when set.
+pub fn parse<T>(name: Option<&str>) -> T
+where T: for<'de> Deserialize<'de> + Clone + Debug {
+    let mut builder = base_sync_builder();
+    if let Some(path) = file_path_from_env(name) {
+        builder = builder.add_source(config::File::with_name(&path));
     }
 
     let config = builder.build().expect("failed to parse config");
@@ -28,20 +43,66 @@ where T: for<'de> Deserialize<'de> + Clone + Debug {
     parsed
 }
 
+/// Parse configuration from environment variables and an optional file path.
+///
+/// If `path` is `Some`, uses it as the config file path.
+/// If `None`, falls back to `CONFIG` when set.
+pub fn parse_file<T, P>(path: Option<P>) -> T
+where
+    T: for<'de> Deserialize<'de> + Clone + Debug,
+    P: Into<PathBuf>,
+{
+    let mut builder = base_sync_builder();
+    let path = match path {
+        Some(path) => Some(path.into().to_string_lossy().into_owned()),
+        None => file_path_from_env(None),
+    };
+    if let Some(path) = path {
+        builder = builder.add_source(config::File::with_name(&path));
+    }
+
+    let config = builder.build().expect("failed to parse config");
+    let parsed: T = config.try_deserialize().unwrap();
+    parsed
+}
+
+/// Async variant of `parse`.
+///
+/// If `name` is `Some`, uses that env var for the config file path.
+/// If `None`, falls back to `CONFIG` when set.
 pub async fn parse_async<T>(name: Option<&str>) -> T
 where T: for<'de> Deserialize<'de> + Clone + Debug {
-    let mut builder = ConfigBuilder::<AsyncState>::default();
-    builder = builder.add_source(config::Environment::default());
+    let mut builder = base_async_builder();
+    if let Some(path) = file_path_from_env(name) {
+        builder = builder.add_source(config::File::with_name(&path));
+    }
+    #[cfg(feature = "aws")]
+    {
+        let aws_m = aws_loader::AwsSource(aws_loader::aws_loader().await);
+        builder = builder.add_source(aws_m);
+    }
 
-    if let Some(name) = name {
-        let path = std::env::var(name).ok()
-            .expect("specified env var not found");
-        builder = builder.add_source(config::File::with_name(path.as_str()));
-    } else {
-        let path = std::env::var("CONFIG").ok();
-        if let Some(path) = path {
-            builder = builder.add_source(config::File::with_name(path.as_str()));
-        }
+    let config = builder.build().await.expect("failed to parse config");
+    let parsed: T = config.try_deserialize().unwrap();
+    parsed
+}
+
+/// Async variant of `parse_file`.
+///
+/// If `path` is `Some`, uses it as the config file path.
+/// If `None`, falls back to `CONFIG` when set.
+pub async fn parse_async_file<T, P>(path: Option<P>) -> T
+where
+    T: for<'de> Deserialize<'de> + Clone + Debug,
+    P: Into<PathBuf>,
+{
+    let mut builder = base_async_builder();
+    let path = match path {
+        Some(path) => Some(path.into().to_string_lossy().into_owned()),
+        None => file_path_from_env(None),
+    };
+    if let Some(path) = path {
+        builder = builder.add_source(config::File::with_name(&path));
     }
     #[cfg(feature = "aws")]
     {
