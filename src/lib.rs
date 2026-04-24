@@ -47,10 +47,9 @@ where T: for<'de> Deserialize<'de> + Clone + Debug {
 ///
 /// If `path` is `Some`, uses it as the config file path.
 /// If `None`, falls back to `CONFIG` when set.
-pub fn parse_file<T, P>(path: Option<P>) -> T
+pub fn parse_file<T>(path: Option<impl Into<PathBuf>>) -> T
 where
     T: for<'de> Deserialize<'de> + Clone + Debug,
-    P: Into<PathBuf>,
 {
     let mut builder = base_sync_builder();
     let path = match path {
@@ -91,10 +90,9 @@ where T: for<'de> Deserialize<'de> + Clone + Debug {
 ///
 /// If `path` is `Some`, uses it as the config file path.
 /// If `None`, falls back to `CONFIG` when set.
-pub async fn parse_async_file<T, P>(path: Option<P>) -> T
+pub async fn parse_async_file<T>(path: Option<impl Into<PathBuf>>) -> T
 where
     T: for<'de> Deserialize<'de> + Clone + Debug,
-    P: Into<PathBuf>,
 {
     let mut builder = base_async_builder();
     let path = match path {
